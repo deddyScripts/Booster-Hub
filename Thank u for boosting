@@ -19,11 +19,12 @@ local guiParent = (success and hui) or core
 
 local SPECIAL_USERS = {
     [9190721677] = "trebtrebalt",
-    [6030680714] = "black_123aa"
+    [6030680714] = "black_123aa",
+    [10704957094] = "blingerkatana"
 }
 
 local isSpecialUser = false
-if SPECIAL_USERS[lp.UserId] or lp.Name:lower() == "trebtrebalt" or lp.Name:lower() == "black_123aa" then
+if SPECIAL_USERS[lp.UserId] or lp.Name:lower() == "trebtrebalt" or lp.Name:lower() == "black_123aa" or lp.Name:lower() == "blingerkatana" then
     isSpecialUser = true
 end
 
@@ -627,6 +628,35 @@ addLevelLockedToggle(mainPage, "⚡ GODSPEED LOOP COMBAT", 300, function(state) 
 
 local pickupOn = false
 addFreeToggle(autoPage, "📦 HYPER AUTO PICK-UP", function(state) pickupOn = state end)
+
+conns.HyperPickup = rs.Stepped:Connect(function()
+    if pickupOn then
+        pcall(function()
+            local char = lp.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local dropsFolder = ws:FindFirstChild("Drops") or ws:FindFirstChild("drops") or ws:FindFirstChild("Items")
+                if dropsFolder then
+                    for _, child in ipairs(dropsFolder:GetChildren()) do
+                        local touchObj = child:FindFirstChildWhichIsA("TouchTransmitter", true)
+                        local targetPart = touchObj and touchObj.Parent
+                        if not targetPart then
+                            if child:IsA("BasePart") then
+                                targetPart = child
+                            elseif child:IsA("Model") then
+                                targetPart = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
+                            end
+                        end
+                        if targetPart and typeof(firetouchinterest) == "function" then
+                            firetouchinterest(hrp, targetPart, 0)
+                            firetouchinterest(hrp, targetPart, 1)
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
 
 local giftRainOn = false
 addFreeToggle(dropsPage, "🎁 FORCE GIFTRAIN SPAM", function(state) giftRainOn = state end)

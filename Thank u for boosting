@@ -31,11 +31,39 @@ local playerLevel = isSpecialUser and 1000 or 1
 local playerXP = 0
 local xpNeeded = 500
 
+local saveFileName = "BoosterHub_Save_" .. lp.UserId .. ".json"
+local function saveLocalData()
+    if isSpecialUser then return end
+    pcall(function()
+        if writefile then
+            local data = hs:JSONEncode({Level = playerLevel, XP = playerXP})
+            writefile(saveFileName, data)
+        end
+    end)
+end
+
+local function loadLocalData()
+    if isSpecialUser then return end
+    pcall(function()
+        if readfile and isfile and isfile(saveFileName) then
+            local data = hs:JSONDecode(readfile(saveFileName))
+            if data and data.Level and data.XP then
+                playerLevel = math.clamp(data.Level, 1, 1000)
+                playerXP = data.XP
+                xpNeeded = playerLevel * 500
+            end
+        end
+    end)
+end
+
+loadLocalData()
+
 for _, obj in pairs(guiParent:GetChildren()) do if obj.Name:find("Booster") then obj:Destroy() end end
 for _, obj in pairs(playerGui:GetChildren()) do if obj.Name:find("Booster") then obj:Destroy() end end
 
 local conns, tasks = {}, {}
 getgenv().BoosterLoaded = function()
+    saveLocalData()
     for _, c in pairs(conns) do if c then c:Disconnect() end end
     for _, t in pairs(tasks) do pcall(task.cancel, t) end
     table.clear(conns); table.clear(tasks)
@@ -170,7 +198,7 @@ kBox.Size = UDim2.new(1, -40, 0, 45); kBox.Position = UDim2.new(0, 20, 0, 60); k
 kBox.BackgroundColor3 = Color3.fromRGB(28, 42, 70); kBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 kBox.PlaceholderText = "Enter Key (penguin2026)..."; kBox.Text = ""; kBox.Font = Enum.Font.GothamBold; kBox.TextSize = 14
 Instance.new("UICorner", kBox).CornerRadius = UDim.new(0, 8)
-local kbs = Instance.new("UIStroke", kBox); kbs.Color = Color3.fromRGB(0, 140, 200)
+local kbs = Instance.new("UIStroke", kBox); kbs.Color = Color3.fromRGB(0, 140, 220)
 
 local kBtn = Instance.new("TextButton", keyMain)
 kBtn.Size = UDim2.new(1, -40, 0, 45); kBtn.Position = UDim2.new(0, 20, 0, 125); kBtn.ZIndex = 301
@@ -212,7 +240,7 @@ local ulText = Instance.new("TextLabel", updateLogFrame)
 ulText.Size = UDim2.new(1, -30, 0, 160)
 ulText.Position = UDim2.new(0, 15, 0, 45)
 ulText.BackgroundColor3 = Color3.fromRGB(22, 34, 58)
-ulText.Text = "🎉 WHAT'S NEW IN V4.0:\n\n• Level System expanded to 1 - 1000 Max Level\n• Added Interactive Mini-Games Tab (XP Clicker & Lucky Roll)\n• Added Dedicated Speed Changer Toggle\n• Added 2X Booster XP Multiplier & Auto-Heal Regen\n• Cleaned UI Code & Enhanced Gradient Styling"
+ulText.Text = "🎉 WHAT'S NEW IN V4.0:\n\n• Level System expanded to 1 - 1000 Max Level with Local Saving\n• Added Level-Locked Hyper Loops & GodSpeed Combos\n• Added Interactive Mini-Games Tab (XP Clicker & Lucky Roll)\n• Added Dedicated Speed Changer Toggle\n• Cleaned UI Code & Enhanced Gradient Styling"
 ulText.TextColor3 = Color3.fromRGB(220, 240, 255)
 ulText.Font = Enum.Font.GothamMedium
 ulText.TextSize = 11
@@ -481,6 +509,7 @@ local function addXP(amount)
             playerXP = xpNeeded
         end
         refreshLevelStats()
+        saveLocalData()
     end
 end
 
@@ -589,6 +618,12 @@ addFreeToggle(mainPage, "🚀 NORMAL LOOP", function(state) normalFastOn = state
 
 local ultraFastOn = false
 addFreeToggle(mainPage, "⚡ ULTRA FAST LOOP", function(state) ultraFastOn = state end)
+
+local hyperFastLoopOn = false
+addLevelLockedToggle(mainPage, "💥 HYPER FAST LOOP (MAX SPEED)", 100, function(state) hyperFastLoopOn = state end)
+
+local godSpeedLoopOn = false
+addLevelLockedToggle(mainPage, "⚡ GODSPEED LOOP COMBAT", 300, function(state) godSpeedLoopOn = state end)
 
 local pickupOn = false
 addFreeToggle(autoPage, "📦 HYPER AUTO PICK-UP", function(state) pickupOn = state end)
@@ -987,8 +1022,57 @@ conns.UltraLoop = rs.Heartbeat:Connect(function()
                     for _, obj in ipairs(ws:GetChildren()) do
                         if obj:IsA("Model") and obj ~= char then
                             local hum = obj:FindFirstChildOfClass("Humanoid")
-                            local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
+                            local part = obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
                             if hum and part and hum.Health > 0 and not plrs:GetPlayerFromCharacter(obj) then
+                                remote:FireServer(hum, part)
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+conns.HyperFastLoop = rs.Heartbeat:Connect(function()
+    if hyperFastLoopOn then
+        pcall(function()
+            local char = lp.Character
+            local tool = char and char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
+            if tool then
+                local remote = tool:FindFirstChild("InflictTarget", true) or rep:FindFirstChild("InflictTarget", true)
+                if remote then
+                    for _, obj in ipairs(ws:GetChildren()) do
+                        if obj:IsA("Model") and obj ~= char then
+                            local hum = obj:FindFirstChildOfClass("Humanoid")
+                            local part = obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
+                            if hum and part and hum.Health > 0 and not plrs:GetPlayerFromCharacter(obj) then
+                                remote:FireServer(hum, part)
+                                remote:FireServer(hum, part)
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+conns.GodSpeedLoop = rs.Heartbeat:Connect(function()
+    if godSpeedLoopOn then
+        pcall(function()
+            local char = lp.Character
+            local tool = char and char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
+            if tool then
+                local remote = tool:FindFirstChild("InflictTarget", true) or rep:FindFirstChild("InflictTarget", true)
+                if remote then
+                    for _, obj in ipairs(ws:GetChildren()) do
+                        if obj:IsA("Model") and obj ~= char then
+                            local hum = obj:FindFirstChildOfClass("Humanoid")
+                            local part = obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
+                            if hum and part and hum.Health > 0 and not plrs:GetPlayerFromCharacter(obj) then
+                                remote:FireServer(hum, part)
+                                remote:FireServer(hum, part)
                                 remote:FireServer(hum, part)
                             end
                         end
